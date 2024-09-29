@@ -11,13 +11,12 @@ import {PriceConverter} from "./PriceConverter.sol";
 error FundMe_NotOwner();
 
 contract FundMe {
-
     using PriceConverter for uint256;
 
     // variables that are assigned value once when they declared are made constant
     uint256 public constant MINIMUM_USD = 5e18;
 
-    address[] public funders;
+    address[] private s_funders;
 
     // variables that are assigned value once but not where they are declared are made immutable
     address public immutable i_owner;
@@ -29,23 +28,22 @@ contract FundMe {
         s_priceFeed = AggregatorV3Interface(priceFeed);
     }
 
-    mapping (address funder => uint256 amountFunded) public addressToAmountFunded;
+    mapping(address funder => uint256 amountFunded) private s_addressToAmountFunded;
 
-    function fund() public payable  {
+    function fund() public payable {
         require(msg.value.getConversionRate(s_priceFeed) >= MINIMUM_USD, "Didn't sent enough ETH");
-        funders.push(msg.sender);
-        addressToAmountFunded[msg.sender] += msg.value;
+        s_funders.push(msg.sender);
+        s_addressToAmountFunded[msg.sender] += msg.value;
     }
 
     function withdraw() public onlyOwner {
-
         // step 1: Reset mappings
-        for (uint256 funderIndex = 0; funderIndex < funders.length; funderIndex++) {
-            address funder = funders[funderIndex];
-            addressToAmountFunded[funder] = 0;
+        for (uint256 funderIndex = 0; funderIndex < s_funders.length; funderIndex++) {
+            address funder = s_funders[funderIndex];
+            s_addressToAmountFunded[funder] = 0;
         }
-        // step 2: Reset funders array
-        funders = new address[](0);
+        // step 2: Reset s_funders array
+        s_funders = new address[](0);
 
         // step 3: Withdraw funds
 
@@ -59,9 +57,8 @@ contract FundMe {
 
         // 3. call (This is used most of the times)
         // type case msg.sender from address type to payable address type
-        (bool callSuccess, ) = payable(msg.sender).call{value: address(this).balance}(""); 
-        require(callSuccess, "Call failed");        
-
+        (bool callSuccess,) = payable(msg.sender).call{value: address(this).balance}("");
+        require(callSuccess, "Call failed");
     }
 
     modifier onlyOwner() {
@@ -74,18 +71,30 @@ contract FundMe {
     }
 
     function getVersion() public view returns (uint256) {
-       return s_priceFeed.version();
+        return s_priceFeed.version();
     }
 
     // receiver function is called even when there's no transaction calldata
     // while fallback function is similar to receive function and is called even with the data too
     // both are special funcs in solidity
 
-    receive() external payable { 
+    receive() external payable {
         fund();
     }
 
-    fallback() external payable { 
+    fallback() external payable {
         fund();
+    }
+
+    /*
+    * View / Pure functions (Getters)
+    */
+
+    function getAddressToAmountFunded(address fundingAddress) external view returns (uint256) {
+        return s_addressToAmountFunded[fundingAddress];
+    }
+
+    function getFunder(uint256 funderIndex) external view returns (address) {
+        return s_funders[funderIndex];
     }
 }
