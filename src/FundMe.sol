@@ -19,7 +19,7 @@ contract FundMe {
     address[] private s_funders;
 
     // variables that are assigned value once but not where they are declared are made immutable
-    address public immutable i_owner;
+    address private immutable i_owner;
 
     AggregatorV3Interface private s_priceFeed;
 
@@ -96,5 +96,9 @@ contract FundMe {
 
     function getFunder(uint256 funderIndex) external view returns (address) {
         return s_funders[funderIndex];
+    }
+
+    function getOwner() external view returns (address) {
+        return i_owner;
     }
 }
